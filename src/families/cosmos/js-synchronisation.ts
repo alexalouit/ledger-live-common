@@ -20,7 +20,7 @@ const txToOps = (info: any, id: string, txs: any): Operation[] => {
     let fees = new BigNumber(0);
 
     tx.tx.auth_info.fee.amount.forEach((elem) => {
-      fees = fees.plus(elem.amount);
+      if (elem.denom === currency.units[1].code) fees = fees.plus(elem.amount);
     });
 
     const op: Operation = {
@@ -89,7 +89,8 @@ const txToOps = (info: any, id: string, txs: any): Operation[] => {
               op.value = new BigNumber(fees);
               op.extra.validators.push({
                 address: attributes.validator,
-                amount: attributes.amount.replace(currency.units[1].code, ""),
+                amount:
+                  attributes.amount.replace(currency.units[1].code, "") || 0,
               });
             }
             break;
@@ -183,7 +184,7 @@ export const getAccountShape: GetAccountShape = async (info) => {
     redelegations,
     unbondings,
     withdrawAddress,
-  } = await getAccountInfo(xpubOrAddress);
+  } = await getAccountInfo(xpubOrAddress, currency);
 
   const oldOperations = initialAccount?.operations || [];
   const newOperations = txToOps(info, accountId, txs);
@@ -205,6 +206,7 @@ export const getAccountShape: GetAccountShape = async (info) => {
 
   for (const unbonding of unbondings) {
     unbondingBalance = unbondingBalance.plus(unbonding.amount);
+    balance = balance.plus(unbonding.amount);
   }
 
   let spendableBalance = balance.minus(unbondingBalance.plus(delegatedBalance));
